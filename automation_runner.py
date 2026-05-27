@@ -195,7 +195,7 @@ def run_automation(config, callback=None):
     password = config.get("password", "")
     start_date = config.get("start_date", "")
     end_date = config.get("end_date", "")
-    download_dir = os.path.abspath(config.get("download_dir", "./downloads"))
+    download_dir = os.path.abspath(os.path.expanduser(config.get("download_dir", "./downloads")))
     
     os.makedirs(download_dir, exist_ok=True)
     

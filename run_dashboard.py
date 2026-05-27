@@ -8,6 +8,21 @@ import time
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+# -------------------------------------------------------------
+# macOS .app 패키지 더블클릭 기동 시 CWD가 '/'로 고정되는 문제 해결
+# -------------------------------------------------------------
+if getattr(sys, 'frozen', False):
+    bundle_dir = os.path.dirname(sys.executable)
+    if "Contents/MacOS" in bundle_dir:
+        # .app 파일이 존재하는 외부 부모 디렉토리를 작업 폴더로 지정
+        base_dir = os.path.abspath(os.path.join(bundle_dir, "../../../"))
+    else:
+        base_dir = bundle_dir
+    try:
+        os.chdir(base_dir)
+    except Exception as e:
+        pass
+
 PORT = 8080
 active_process = None
 log_queue = queue.Queue()
