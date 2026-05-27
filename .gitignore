@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+build/
+dist/
+downloads/
+test_downloads/
+temp_downloads/
+.DS_Store
+diagnostics/
+*.spec
+api_requests.json
+*.html
+*.png
