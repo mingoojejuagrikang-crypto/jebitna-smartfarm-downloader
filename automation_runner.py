@@ -207,12 +207,27 @@ def run_automation(config, callback=None):
     with sync_playwright() as p:
         # 백그라운드 실행을 위해 headless=True 로 세팅!!
         log_message("백그라운드 백엔드 크롬 브라우저(Headless)를 기동합니다. (PC 사용 가능)", "info")
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                "--disable-blink-features=AutomationControlled"
-            ]
-        )
+        # 시스템에 설치된 Chrome 또는 Edge 브라우저를 우선 기동하여 독립 실행 시 브라우저 미설치 에러를 원천 방지
+        browser = None
+        for channel in ["chrome", "msedge"]:
+            try:
+                log_message(f"시스템 {channel} 브라우저 기동 시도...", "info")
+                browser = p.chromium.launch(
+                    headless=True,
+                    channel=channel,
+                    args=["--disable-blink-features=AutomationControlled"]
+                )
+                log_message(f"시스템 {channel} 브라우저 기동 성공!", "info")
+                break
+            except Exception as e:
+                log_message(f"시스템 {channel} 브라우저 기동 실패: {str(e)}", "info")
+        
+        if not browser:
+            log_message("시스템 설치 브라우저 기동 실패. 내장 Playwright Chromium 기동 시도...", "info")
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             viewport={"width": 1280, "height": 800}
