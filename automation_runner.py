@@ -187,7 +187,7 @@ def check_query_limits(page):
         pass
     return False
 
-def run_automation(config, callback=None):
+def run_automation(config, callback=None, check_stop=None):
     global _log_callback
     _log_callback = callback
     target_url = config.get("target_url", "https://jebitna.agri.jeju.kr/")
@@ -285,8 +285,7 @@ def run_automation(config, callback=None):
         for f_idx, farm_name in enumerate(farm_names):
             # 중지 요청 감시
             try:
-                import run_dashboard
-                if _log_callback and not run_dashboard.process_running:
+                if check_stop and check_stop():
                     log_message("사용자에 의해 수집 프로세스가 중지되었습니다.", "error")
                     browser.close()
                     return
@@ -321,8 +320,7 @@ def run_automation(config, callback=None):
             while current_start <= global_end:
                 # 중지 요청 감시
                 try:
-                    import run_dashboard
-                    if _log_callback and not run_dashboard.process_running:
+                    if check_stop and check_stop():
                         log_message("사용자에 의해 수집 프로세스가 중지되었습니다.", "error")
                         browser.close()
                         return

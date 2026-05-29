@@ -216,6 +216,7 @@ HTML_CONTENT = """<!DOCTYPE html>
             grid-template-rows: auto 1fr;
             gap: 1.5rem;
             height: 100%;
+            min-height: 0;
         }
 
         /* Progress Card */
@@ -227,6 +228,7 @@ HTML_CONTENT = """<!DOCTYPE html>
             display: flex;
             justify-content: space-between;
             align-items: center;
+            min-height: 0;
         }
 
         .progress-circle-container {
@@ -295,6 +297,7 @@ HTML_CONTENT = """<!DOCTYPE html>
             flex-direction: column;
             overflow: hidden;
             box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+            min-height: 0;
         }
 
         .terminal-header {
@@ -574,6 +577,9 @@ HTML_CONTENT = """<!DOCTYPE html>
                 try {
                     const data = JSON.parse(event.data);
                     
+                    // 무의미한 heartbeat 빈 객체 {} 필터링
+                    if (!data.message && !data.status) return;
+                    
                     if (data.status === "complete") {
                         document.getElementById("status-title").innerText = "전체 수집 완료";
                         updateProgress(100);
@@ -599,7 +605,9 @@ HTML_CONTENT = """<!DOCTYPE html>
                     
                 } catch (e) {
                     // JSON 형식이 아닌 원본 문자열일 경우
-                    appendLog(new Date().toLocaleTimeString(), event.data, "info");
+                    if (event.data && event.data.trim() !== "") {
+                        appendLog(new Date().toLocaleTimeString(), event.data, "info");
+                    }
                 }
             };
 
@@ -608,6 +616,11 @@ HTML_CONTENT = """<!DOCTYPE html>
                 resetUI();
             };
         }
+
+        // 브라우저 탭/창 종료 시 파이썬 백엔드 서버도 함께 종료하도록 신호 전송
+        window.addEventListener("beforeunload", function() {
+            navigator.sendBeacon("/api/shutdown");
+        });
     </script>
 </body>
 </html>
@@ -686,6 +699,12 @@ class DashboardServer(BaseHTTPRequestHandler):
             process_running = False
             self.wfile.write(json.dumps({"status": "stopped"}).encode("utf-8"))
 
+        elif self.path == "/api/shutdown":
+            process_running = False
+            self.wfile.write(json.dumps({"status": "shutdown"}).encode("utf-8"))
+            # Shutdown the server in a separate thread so this request can complete
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+
     def run_subprocess(self, config):
         global process_running
         
@@ -698,8 +717,12 @@ class DashboardServer(BaseHTTPRequestHandler):
             def sse_log_callback(log_data):
                 log_queue.put(json.dumps(log_data))
                 
-            # 3. 인메모리 기동
-            automation_runner.run_automation(config, callback=sse_log_callback)
+            # 3. 중지 상태 확인용 콜백
+            def check_stop_flag():
+                return not process_running
+                
+            # 4. 인메모리 기동
+            automation_runner.run_automation(config, callback=sse_log_callback, check_stop=check_stop_flag)
             
         except Exception as e:
             err_data = {
